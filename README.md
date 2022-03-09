@@ -1,6 +1,8 @@
 # Infracost Sentinel Module
 
-This repository contains a Sentinel module that can be used within Terraform Cloud/Enterprise to demonstrate how the Sentinel policy as code language can be used to enforce cost management controls. To learn more about the Sentinel language and framework, please review the Sentinel [documentation](https://docs.hashicorp.com/sentinel/).
+This repository contains a Sentinel module that can be used within Terraform Cloud/Enterprise to demonstrate how the Sentinel policy as code language can be used to enforce cost management controls. 
+
+To learn more about the Sentinel language and framework, please review the Sentinel [documentation](https://docs.hashicorp.com/sentinel/).
 
 ---
 
