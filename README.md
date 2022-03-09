@@ -30,9 +30,9 @@ Before you start using this module, it is recommended that you do the following:
     }
     ```
 
-    > **NOTE:** The `token` value should be the token that was generate by running the `infracost register` command.
+    > **NOTE:** The `token` value should be the token that was generated when the `infracost register` command was executed.
 
-    Once complete, you folder structure should appear as follows:
+    The working directory should now appear as follows:
 
     ```
     .
@@ -54,7 +54,7 @@ Before you start using this module, it is recommended that you do the following:
 
 The [policy.sentinel](./policy.sentinel) file shows an example of how you can use the [infracost.sentinel](./modules/infracost.sentinel) module in a Sentinel policy.
 
-The `infracost` module uses the Sentinel HTTP import to POST the raw output of the Terraform Plan JSON to the https://pricing.api.infracost.io/breakdown API, and then returns the Sentinel representation of the `Infracost` response. This response can then be used to enforce controls such as the monthly cost for a project.
+The `infracost` module uses the Sentinel [HTTP](https://docs.hashicorp.com/sentinel/imports/http) import to POST the raw output of the Terraform Plan JSON to the https://pricing.api.infracost.io/breakdown API. The `breakdown` module function then returns the Sentinel representation of the `Infracost` response. This response data is then used to enforce a control that limits the monthly cost for a project.
 
 You can demonstrate the policy behaviour by running the following command:
 
