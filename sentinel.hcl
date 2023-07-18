@@ -1,16 +1,8 @@
-module "tfplan/v2" {
-  source = "./mocks/mock-tfplan-v2.sentinel"
+import "module" "infracost" {
+  source = "./imports/modules/infracost.sentinel"
 }
 
-module "infracost" {
-  source = "./modules/infracost.sentinel"
-}
-
-policy "policy" {
-  source = "./policy.sentinel"
+policy "monthly_project_cost_violation" {
+  source = "./policies/monthly_project_cost_violation/monthly_project_cost_violation.sentinel"
   enforcement_level = "hard-mandatory"
-}
-
-param "foo" {
-  value = false
 }
