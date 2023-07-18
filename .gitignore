@@ -1,3 +1,5 @@
 .DS_Store
 .sentinel
 parameters.json
+policies/manage_project_costs/testdata/plan-fail.sentinel
+.gitignore

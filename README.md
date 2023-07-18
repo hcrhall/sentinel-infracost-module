@@ -1,139 +1,157 @@
-# Infracost Sentinel Module
+# Cost Management guardrails with Sentinel and Infracost
 
-This repository contains a Sentinel module that can be used within Terraform Cloud/Enterprise to demonstrate how the Sentinel policy as code language can be used to enforce cost management controls.
-
-To learn more about the Sentinel language and framework, please review the Sentinel [documentation](https://docs.hashicorp.com/sentinel/).
+This repository contains a library of policies that can be used within Terraform Cloud to enforce cost controls with [Infracost](https://www.infracost.io). To learn more about the Sentinel language and framework, please review the Sentinel [documentation](https://docs.hashicorp.com/sentinel/).
 
 ---
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [Documentation](#documentation)
+- [Setup & Integration](#setup--integration)
+- [Version Control System (VCS)](#version-control-system-vcs)
+- [Setup & Integration](#setup--integration)
+- [Contribution Guide](#contribution-guide)
 - [Useful Resources](#useful-resources)
 
 ---
 
 ## Prerequisites
 
-↥ [back to top](#table-of-contents)
+Before you start adopting policies within this library, it is recommended that you complete the following:
 
-Before you start using this module, it is recommended that you do the following:
+1. [Install](https://docs.hashicorp.com/sentinel/intro/getting-started/install/) the Sentinel CLI.
 
-1. Clone this repository locally.
-1. [Install](https://docs.hashicorp.com/sentinel/intro/getting-started/install/) the Sentinel CLI. The CLI is an excellent tool for familiarizing yourself with the internals of Sentinel and allows you to `apply` and `test` policies outside of the Terraform platform. You can find more information related to the Sentinel CLI in the [Enforce Policy with Sentinel](https://learn.hashicorp.com/tutorials/terraform/policy-quickstart?in=terraform/cloud-get-started) learning track.
+2. Visit https://app.terraform.io/signup/account and follow the prompts to create a free Terraform Cloud account.
+3. Have access to a [supported](https://www.terraform.io/docs/cloud/vcs/index.html#supported-vcs-providers) version control system (VCS) provider.
+4. Sign up for an Infracost Cloud organization by following the [Get Started](https://www.infracost.io/docs/infracost_cloud/get_started/) guide.
+5. Retrieve your [API key](https://www.infracost.io/docs/infracost_cloud/key_concepts/#api-keys) from your Infracost Cloud Org Settings.
 
-1. Sign-up for a free Infracost account by following the [Get Started](https://www.infracost.io/docs/infracost_cloud/get_started/) documentation.
-1. Retrieve your [API key](https://www.infracost.io/docs/infracost_cloud/key_concepts/#api-keys) and store it in a safe location. We will use this in a later step when we configure the parameter values for the Terraform Cloud policy set.
-
+    > **Note:** You will need this API key when you define your policy set parameters in a later [step](#configure-the-policy-set-parameters).
 
 ---
 
 ## Documentation
 
-↥ [back to top](#table-of-contents)
+The file and directory structure within this repository follow an opinionated standard that makes it easy to test and publish policies to the Terraform Registry. You can learn more about the structure by reviewing the Sentinel [testing documentation](https://docs.hashicorp.com/sentinel/writing/testing#testing), as well as the [Publishing Policy Library documentation](https://developer.hashicorp.com/terraform/registry/policy-libraries/publishing).
 
-### Cost Management as Policy
 
-The [monthly_project_cost_exceeded](./policies/monthly_project_cost_exceeded/monthly_project_cost_exceeded.sentinel) policy shows an example of how you can use the [infracost.sentinel](./imports/modules/infracost.sentinel) module in a Sentinel policy.
+### Example
 
-The policy uses the module to ensure that the monthly cost of a Infracost project does not exceed $1000.00.
-
+```ruby
+.
+├── Makefile
+├── README.md
+├── docs
+│   ├── modules
+│   │   └── infracost.md
+│   └── policies
+│       └── manage_project_costs.md
+├── images
+├── imports
+│   ├── modules
+│   │   └── infracost.sentinel
+│   └── static
+│       └── response.json
+├── policies
+│   └── manage_project_costs
+│       ├── manage_project_costs.sentinel
+│       ├── test
+│       │   └── manage_project_costs
+│       │       ├── fail.hcl
+│       │       └── pass.hcl
+│       └── testdata
+│           ├── fail.sentinel
+│           ├── infracost-fail.sentinel
+│           ├── infracost-pass.sentinel
+│           └── pass.sentinel
+└── sentinel.hcl
 ```
-import "infracost"
 
-param API_KEY
+---
 
-// The cost of your infrastructure project should not exceed $1000.00 a month
-main = rule when infracost.projects.breakdown(API_KEY) {
-    infracost.projects.total_monthly_cost(API_KEY).less_than_or_equal_to(1000.00)
-}
-```
+## Setup & Integration
 
-### Infracost Sentinel Module
+Before you can use any of the policies within this library, you need to configure Terraform Cloud. The following sections detail the high-level steps required to deploy a policy from this library. The [Enforce Policy with Sentinel](https://learn.hashicorp.com/terraform?track=sentinel#sentinel) learning track covers the end-to-end process in greater detail. If this is your first time setting up a Sentinel policy, we encourage you to familiarize yourself with this track prior to proceeding further.
 
-The `infracost` module uses the Sentinel [HTTP](https://docs.hashicorp.com/sentinel/imports/http) import to `POST` the raw output of the Terraform Plan JSON to the https://pricing.api.infracost.io/breakdown API. The module contains several helper functions that make it easier to work with the data that is returned as part of the `breakdown` API response.
+### Version Control System (VCS)
 
-```
-import "http"
-import "json"
-import "decimal"
-import "tfplan/v2" as tfplan
+Terraform Cloud provides first-class support for VCS integration. This allows VCS repositories to contain all of the policies and configuration needed to manage Sentinel policies at scale. [Integrating with VCS](https://www.terraform.io/docs/cloud/getting-started/policies.html#integrating-with-vcs) is as simple as:
 
-projects = {
-  "total_monthly_cost": func(token){
-    return {
-      "less_than_or_equal_to": func(i){
-        return all as_json(tfplan.raw, token).projects as _, project {
-          decimal.new(project.breakdown.totalMonthlyCost).float <= i
-        }
-      },
+1. [Connect a VCS Provider to Terraform Cloud](https://www.terraform.io/docs/cloud/vcs/index.html).
+2. Create a repository in your VCS provider that will be used as the source of your Policy Set configuration.
+3. Clone the source repository to a local directory.
+
+### Policy Set
+
+Once VCS is integrated with Terraform Cloud, configure your Terraform Policy Set as follows:
+
+1. Add the `manage_project_costs` policy from the library that should be enforced on a Terraform [Workspace](https://www.terraform.io/docs/cloud/workspaces/index.html).
+1. Review the policy documentation and copy the configuration snippet for the policy of your choice.
+1. Create a `sentinel.hcl` configuration file within the local directory for your repository.
+1. Edit the contents of the `sentinel.hcl` by pasting the configuration snippet into the body of the configuration file.
+
+    ```hcl
+    import "module" "infracost" {
+      source = "./imports/modules/infracost.sentinel"
     }
-  },
-  "breakdown": func(token){
-    return print(as_table(tfplan.raw, token))
-  },
-}
 
-as_json = func(plan, token) {
+    policy "manage_project_costs" {
+      source = "./policies/manage_project_costs/manage_project_costs.sentinel"
+      enforcement_level = "hard-mandatory"
+    }
+    ```
 
-  body = string(
-    "--TerraformPlan\r\n" +
-    "Content-Disposition: form-data; name=\"path\"; filename=\"plan.json\"\r\nContent-Type: \"application/json\"\r\n" +
-    "\r\n" + json.marshal(plan) + "\r\n" +
-    "--TerraformPlan\r\n" +
-    "Content-Disposition: form-data; name=\"format\"\r\n" +
-    "\r\njson\r\n" +
-    "--TerraformPlan--")
+1. Commit your changes to your local repository content and then use the `git push` command to upload the changes to your remote repository.
 
-  request = http.request("https://pricing.api.infracost.io/breakdown").
-    with_header("x-api-key", token).
-    with_header("Content-Type", "multipart/form-data;boundary=TerraformPlan").
-    with_body(body)
+### Create Policy Set
 
-  response = http.post(request)
+Once the Policy Set is configured, it's time to enforce this configuration on a Terraform Cloud workspace. To add a policy set in the Terraform Cloud UI:
 
-  return json.unmarshal(response.body)
-}
+1. Go to **Policy Sets** in your organization’s settings.
 
-as_table = func(plan, token) {
+1. Click **Connect a new policy set**.
 
-  body = string(
-    "--TerraformPlan\r\n" +
-    "Content-Disposition: form-data; name=\"path\"; filename=\"plan.json\"\r\nContent-Type: \"application/json\"\r\n" +
-    "\r\n" + json.marshal(plan) + "\r\n" +
-    "--TerraformPlan\r\n" +
-    "Content-Disposition: form-data; name=\"format\"\r\n" +
-    "\r\ntable\r\n" +
-    "--TerraformPlan--")
+1. Create version control policies, choose a version control provider and then select the repository with your policy set.
 
-  request = http.request("https://pricing.api.infracost.io/breakdown").
-    with_header("x-api-key", token).
-    with_header("Content-Type", "multipart/form-data;boundary=TerraformPlan").
-    with_body(body)
+1. Configure the policy set settings:
+   - **Policy Framework:**  Select **Sentinel** as the policy framework for the policies you want to add.
 
-  response = http.post(request)
+   - **Name:** Add a name containing letters, numbers, `-`, and `_`.
+   - **Description:** Describe the policy set’s purpose.
+   - **Scope of policies:** Choose whether Terraform Cloud should automatically enforce the policy set on all workspaces, or only on a specific subset.
+   - **Workspaces**: A **Workspaces** section appears on the bottom of the form when you scope the policy set to selected workspaces. Select workspaces where Terraform Cloud should apply the policy set.
+   - **VCS Branch**: Specify the branch within your VCS repository where Terraform Cloud should import new versions of policies. If you do not set this field, Terraform Cloud uses the default branch of the VCS repository you selected.
+   - **Policies Path**: Specify the sub-directory in your VCS repository containing the policy set files. This action lets you maintain multiple policy sets within a single repository. Set this field to the directory path that contains the `sentinel.hcl` configuration file for the policy set.
+   - **Sentinel Parameters:** Add a new *Sensitive* parameter called **x_api_key** that contains the Infracost organization API key that was created in the [prerequisites](#prerequisites)
 
-  print(response.body)
+### Policy Enforcement Experience
 
-  return true
-}
-```
+When you add policy sets to a workspace, Terraform Cloud enforces those policy sets on every Terraform run. Terraform Cloud displays the results of policy checks in the UI for each run.
 
-### Integrating with Terraform Cloud
+![Sentinel Policy Check](./images/tfc-run-experience.png)
 
-To integrate the Infracost Sentinel module into your existing Terraform Cloud policy workflows, you can utilize the Policy Set feature provided by the Terraform Cloud platform. If you are new to Terraform Cloud and would like to familiarize yourself with the concept of policy sets and how they are used to group and enforce policies in Terraform Cloud, you can refer to the [Managing Policy Sets](https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/manage-policy-sets) documentation.
-
-![User Experience](./docs/images/results.png)
-
-> **Note:** The `monthly_project_cost_exceeded` policy uses an API Key to authenticate against the Infracost breakdown API. To ensure security, it is considered a best practice not to store sensitive values as plain text in a policy. Therefore, you should create a new parameter called `API_KEY` in your Sentinel Policy Set to securely store this value.
-> ![parameter configuration](./docs/images/parameters.png)
-
+---
 
 ## Useful Resources
 
 ↥ [back to top](#table-of-contents)
+
+- [Getting Started with Terraform Cloud](https://www.terraform.io/docs/cloud/getting-started/index.html)
+- [Configuring Version Control Access](https://www.terraform.io/docs/cloud/getting-started/vcs.html)
 - [Infracost Getting Started](https://www.infracost.io/docs/)
 - [Infracost Plan JSON API](https://www.infracost.io/docs/integrations/infracost_api/)
+- [Configuring Sentinel Policies](https://www.terraform.io/docs/cloud/getting-started/policies.html)
+- [Sentinel Overview](https://www.terraform.io/docs/cloud/sentinel/index.html)
+- [Example Policies](https://www.terraform.io/docs/cloud/sentinel/examples.html)
 - [Sentinel Documentation](https://docs.hashicorp.com/sentinel/)
 - [Sentinel Language](https://docs.hashicorp.com/sentinel/language/)
 - [Sentinel Language Specification](https://docs.hashicorp.com/sentinel/language/spec/)
+
+---
+
+## Contribution Guide
+
+This policy library is by no means exhaustive. If you have questions, comments, or have identified ways for us to improve, please create [a new GitHub issue](https://github.com/hcrhall/sentinel-infracost-module/issues/new/choose).
+
+Alternatively, we welcome any contributions that improve the quality of this library! To learn more about contributing and suggesting changes to this library, refer to the [contributing guide](CONTRIBUTING.md).

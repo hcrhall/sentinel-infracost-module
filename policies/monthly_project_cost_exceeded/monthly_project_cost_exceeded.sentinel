@@ -1,8 +1,0 @@
-import "infracost"
-
-param API_KEY
-
-// The cost of your infrastructure project should not exceed $1000.00 a month
-main = rule when infracost.projects.breakdown(API_KEY) {
-    infracost.projects.total_monthly_cost(API_KEY).less_than_or_equal_to(1000.00)
-}

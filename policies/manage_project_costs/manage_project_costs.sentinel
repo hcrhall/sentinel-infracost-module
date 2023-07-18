@@ -1,0 +1,13 @@
+import "infracost"
+
+param x_api_key
+param budget
+
+estimates = infracost.auth(x_api_key)
+
+// The cost of your infrastructure project should not exceed $1000.00 a month
+main = rule when print(estimates.summary) {
+    all estimates.data.projects as _, project {
+        infracost.estimate(project.breakdown.totalMonthlyCost).less_than_or_equal_to(budget)
+    }
+}

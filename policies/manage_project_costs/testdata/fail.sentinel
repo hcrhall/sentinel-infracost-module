@@ -1,0 +1,38 @@
+import "decimal"
+
+func auth(token) {
+	return {
+		"data": {
+            "projects": [
+                {
+                    "breakdown": {
+                        "resources": [],
+                        "totalMonthlyCost": "11742.64",
+                    },
+                },
+            ],
+        },
+		"summary": "2 were estimated, all of which include usage-based costs, see https://infracost.io/usage-file",
+	}
+}
+
+func estimate(input) {
+	return {
+		"less_than": func(i) {
+			return to_float(input) < i
+		},
+		"less_than_or_equal_to": func(i) {
+			return to_float(input) <= i
+		},
+		"greater_than": func(i) {
+			return to_float(input) > i
+		},
+		"greater_than_or_equal_to": func(i) {
+			return to_float(input) >= i
+		},
+	}
+}
+
+func to_float(s) {
+	return decimal.new(s).float
+}

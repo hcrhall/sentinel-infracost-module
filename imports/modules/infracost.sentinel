@@ -3,27 +3,35 @@ import "json"
 import "decimal"
 import "tfplan/v2" as tfplan
 
-projects = {
-  "total_monthly_cost": func(token){
-    return {
-      "less_than_or_equal_to": func(i){
-        return all as_json(tfplan.raw, token).projects as _, project {
-          decimal.new(project.breakdown.totalMonthlyCost).float <= i
-        }
-      },
-    }
-  },
-  "breakdown": func(token){
-    return print(as_table(tfplan.raw, token))
-  },
+func auth(token) {
+	return {
+		"data":    as_json(token),
+		"summary": as_table(token),
+	}
 }
 
-as_json = func(plan, token) {
+func estimate(input) {
+	return {
+		"less_than": func(i) {
+			return to_float(input) < i
+		},
+		"less_than_or_equal_to": func(i) {
+			return to_float(input) <= i
+		},
+		"greater_than": func(i) {
+			return to_float(input) > i
+		},
+		"greater_than_or_equal_to": func(i) {
+			return to_float(input) >= i
+		},
+	}
+}
 
+func as_json(token) {
   body = string(
     "--TerraformPlan\r\n" +
     "Content-Disposition: form-data; name=\"path\"; filename=\"plan.json\"\r\nContent-Type: \"application/json\"\r\n" +
-    "\r\n" + json.marshal(plan) + "\r\n" +
+    "\r\n" + json.marshal(tfplan.raw) + "\r\n" +
     "--TerraformPlan\r\n" +
     "Content-Disposition: form-data; name=\"format\"\r\n" +
     "\r\njson\r\n" +
@@ -39,12 +47,11 @@ as_json = func(plan, token) {
   return json.unmarshal(response.body)
 }
 
-as_table = func(plan, token) {
-
+func as_table(token) {
   body = string(
     "--TerraformPlan\r\n" +
     "Content-Disposition: form-data; name=\"path\"; filename=\"plan.json\"\r\nContent-Type: \"application/json\"\r\n" +
-    "\r\n" + json.marshal(plan) + "\r\n" +
+    "\r\n" + json.marshal(tfplan.raw) + "\r\n" +
     "--TerraformPlan\r\n" +
     "Content-Disposition: form-data; name=\"format\"\r\n" +
     "\r\ntable\r\n" +
@@ -57,7 +64,9 @@ as_table = func(plan, token) {
 
   response = http.post(request)
 
-  print(response.body)
+  return response.body
+}
 
-  return true
+func to_float(s) {
+	return decimal.new(s).float
 }
